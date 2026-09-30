@@ -1,4 +1,4 @@
-﻿using Guna.UI2.WinForms.Suite;
+using Guna.UI2.WinForms.Suite;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Xml.Linq;
@@ -59,6 +59,7 @@ namespace SqlVersionManager
             accentBar = new Guna.UI2.WinForms.Guna2Panel();
             label0 = new Label();
             txtPath = new Guna.UI2.WinForms.Guna2TextBox();
+            btnBrowse = new Guna.UI2.WinForms.Guna2Button();
             label1 = new Label();
             dgvScripts = new Guna.UI2.WinForms.Guna2DataGridView();
             lblStatus = new Guna.UI2.WinForms.Guna2HtmlLabel();
@@ -106,6 +107,7 @@ namespace SqlVersionManager
             guna2Panel1.Controls.Add(accentBar);
             guna2Panel1.Controls.Add(label0);
             guna2Panel1.Controls.Add(txtPath);
+            guna2Panel1.Controls.Add(btnBrowse);
             guna2Panel1.Controls.Add(label1);
             guna2Panel1.Controls.Add(dgvScripts);
             guna2Panel1.Controls.Add(lblStatus);
@@ -175,8 +177,21 @@ namespace SqlVersionManager
             txtPath.ReadOnly = true;
             txtPath.SelectedText = "";
             txtPath.ShadowDecoration.CustomizableEdges = customizableEdges4;
-            txtPath.Size = new Size(867, 31);
+            txtPath.Size = new Size(730, 31);
             txtPath.TabIndex = 7;
+            // 
+            // btnBrowse
+            // 
+            btnBrowse.BorderRadius = 10;
+            btnBrowse.FillColor = Color.FromArgb(13, 148, 136);
+            btnBrowse.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+            btnBrowse.ForeColor = Color.White;
+            btnBrowse.Location = new Point(779, 58);
+            btnBrowse.Name = "btnBrowse";
+            btnBrowse.Size = new Size(125, 31);
+            btnBrowse.TabIndex = 12;
+            btnBrowse.Text = "Browse";
+            btnBrowse.Click += btnBrowse_Click;
             // 
             // label1
             // 
@@ -303,7 +318,7 @@ namespace SqlVersionManager
             btnExecute.ShadowDecoration.CustomizableEdges = customizableEdges10;
             btnExecute.Size = new Size(180, 38);
             btnExecute.TabIndex = 6;
-            btnExecute.Text = "Execute";
+            btnExecute.Text = "Create Version";
             btnExecute.Click += btnExecute_Click;
             // 
             // picLogo
@@ -352,6 +367,8 @@ namespace SqlVersionManager
         private Guna.UI2.WinForms.Guna2Button btnExecute;
 
         private Guna.UI2.WinForms.Guna2TextBox txtPath;
+
+        private Guna.UI2.WinForms.Guna2Button btnBrowse;
 
         private Guna.UI2.WinForms.Guna2DataGridView dgvScripts;
 

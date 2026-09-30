@@ -1,13 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Resources;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using System.Xml.Linq;
-using SqlDom = Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace SqlVersionManager
 {
@@ -27,7 +21,6 @@ namespace SqlVersionManager
         {
             InitializeComponent();
 
-            txtPath.Text = @"C:\Users\suhaib.hasan\Desktop\testFiles";
 
             SetupGrid();
             lblStatus.BringToFront();
@@ -111,32 +104,6 @@ namespace SqlVersionManager
         private string GetScript(DataGridViewRow row)
         {
             return row.Cells["colScript"].Value?.ToString()?.Trim() ?? "";
-        }
-
-        private string? GetSqlError(string query)
-        {
-            SqlDom.TSqlParser parser = new SqlDom.TSql160Parser(true);
-
-            using StringReader reader = new StringReader(query);
-            SqlDom.TSqlFragment fragment = parser.Parse(reader, out IList<SqlDom.ParseError> errors);
-
-            if (errors.Count > 0)
-                return "Line " + errors[0].Line + ": " + errors[0].Message;
-
-            // A bare word (e.g. "asdf") parses as a procedure call without EXEC, so reject it
-            if (fragment is SqlDom.TSqlScript script)
-            {
-                foreach (SqlDom.TSqlStatement statement in script.Batches.SelectMany(b => b.Statements))
-                {
-                    if (statement is SqlDom.ExecuteStatement &&
-                        statement.ScriptTokenStream[statement.FirstTokenIndex].TokenType == SqlDom.TSqlTokenType.Identifier)
-                    {
-                        return "Line " + statement.StartLine + ": Unrecognized statement. Use EXEC to run a procedure.";
-                    }
-                }
-            }
-
-            return null;
         }
 
         private void FocusScriptCell(int rowIndex)
@@ -241,7 +208,7 @@ namespace SqlVersionManager
                 return;
             }
 
-            string? error = GetSqlError(lastScript);
+            string? error = SqlValidator.GetError(lastScript);
 
             if (error != null)
             {
@@ -256,13 +223,32 @@ namespace SqlVersionManager
             lblStatus.Text = "";
         }
 
+        private void btnBrowse_Click(object sender, EventArgs e)
+        {
+            using FolderBrowserDialog dialog = new FolderBrowserDialog
+            {
+                Description = "Select the folder containing SqlServer_0.resx",
+                UseDescriptionForTitle = true,
+                ShowNewFolderButton = false
+            };
+
+            if (Directory.Exists(txtPath.Text))
+                dialog.InitialDirectory = txtPath.Text;
+
+            if (dialog.ShowDialog(this) == DialogResult.OK)
+            {
+                txtPath.Text = dialog.SelectedPath;
+                lblStatus.Text = "";
+            }
+        }
+
         private void btnExecute_Click(object sender, EventArgs e)
         {
             string folderPath = txtPath.Text.Trim();
 
             if (!Directory.Exists(folderPath))
             {
-                ShowStatus("Folder does not exist.", true);
+                ShowStatus("Please select a valid folder.", true);
                 return;
             }
 
@@ -277,7 +263,7 @@ namespace SqlVersionManager
                 if (script == "")
                     continue;
 
-                string? error = GetSqlError(script);
+                string? error = SqlValidator.GetError(script);
 
                 if (error != null)
                 {
@@ -295,54 +281,11 @@ namespace SqlVersionManager
                 return;
             }
 
-            string versionFile = Path.Combine(folderPath, "SqlServer_0.resx");
-
-            if (!File.Exists(versionFile))
-            {
-                ShowStatus("SqlServer_0.resx was not found.", true);
-                return;
-            }
-
             try
             {
-                XDocument document = XDocument.Load(versionFile);
-
-                XElement? valueElement = document
-                    .Descendants("data")
-                    .FirstOrDefault(x => (string?)x.Attribute("name") == "8_VM_BRANCH")
-                    ?.Element("value");
-
-                if (valueElement == null)
-                {
-                    ShowStatus("8_VM_BRANCH resource was not found.", true);
-                    return;
-                }
-
-                int latestNumber = 0;
-
-                foreach (string file in Directory.GetFiles(folderPath, "SqlServer_*.resx"))
-                {
-                    string numberPart = Path.GetFileNameWithoutExtension(file).Replace("SqlServer_", "");
-
-                    if (int.TryParse(numberPart, out int number) && number > latestNumber)
-                        latestNumber = number;
-                }
-
-                latestNumber++;
-
-                string newFileName = "SqlServer_" + latestNumber.ToString("D2") + ".resx";
-
-                using (ResXResourceWriter writer = new ResXResourceWriter(Path.Combine(folderPath, newFileName)))
-                {
-                    for (int i = 0; i < queries.Count; i++)
-                        writer.AddResource("ver_" + i, queries[i]);
-                }
-
-                valueElement.Value = latestNumber.ToString("D2");
-                document.Save(versionFile);
-
+                VersionCreationResult result = ResourceFileService.CreateVersion(folderPath, queries);
                 ResetGrid();
-                ShowStatus(newFileName + " created successfully.", false);
+                ShowStatus($"{result.FileName} created with {queries.Count} SQL script(s). Branch version updated to {result.Version}.", false);
             }
             catch (Exception ex)
             {
